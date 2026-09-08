@@ -42,7 +42,7 @@ final class PlatformServerSettingsRepository
         $values=[];foreach(self::SEFAZ_ALLOWED as$key)$values[$key]=trim((string)($input[$key]??''));
         $values['sefaz_technical_cnpj']=preg_replace('/\D/','',$values['sefaz_technical_cnpj'])??'';
         $values['sefaz_technical_phone']=preg_replace('/\D/','',$values['sefaz_technical_phone'])??'';
-        if(strlen($values['sefaz_technical_cnpj'])!==14)throw new InvalidArgumentException('Informe o CNPJ do responsável técnico com 14 dígitos.');
+        if(!$this->validCnpj($values['sefaz_technical_cnpj']))throw new InvalidArgumentException('Informe um CNPJ válido do responsável técnico.');
         if($values['sefaz_technical_contact']===''||mb_strlen($values['sefaz_technical_contact'])>60)throw new InvalidArgumentException('Informe o contato técnico com até 60 caracteres.');
         if(!filter_var($values['sefaz_technical_email'],FILTER_VALIDATE_EMAIL))throw new InvalidArgumentException('Informe um e-mail válido do responsável técnico.');
         if(!in_array(strlen($values['sefaz_technical_phone']),[10,11],true))throw new InvalidArgumentException('Informe o telefone técnico com DDD.');
@@ -50,5 +50,12 @@ final class PlatformServerSettingsRepository
         if($values['sefaz_csrt_env']===''||!preg_match('/^[A-Z][A-Z0-9_]{2,79}$/',$values['sefaz_csrt_env']))throw new InvalidArgumentException('Informe somente o nome da variável de ambiente do CSRT.');
         $stmt=$this->pdo->prepare('INSERT INTO platform_server_settings(setting_key,setting_value,updated_by) VALUES(?,?,?) ON DUPLICATE KEY UPDATE setting_value=VALUES(setting_value),updated_by=VALUES(updated_by)');
         $this->pdo->beginTransaction();try{foreach($values as$key=>$value)$stmt->execute([$key,$value,$actorId]);$this->pdo->commit();}catch(\Throwable$e){if($this->pdo->inTransaction())$this->pdo->rollBack();throw$e;}
+    }
+
+    private function validCnpj(string $cnpj):bool
+    {
+        if(!preg_match('/^\d{14}$/',$cnpj)||preg_match('/^(\d)\1{13}$/',$cnpj))return false;
+        for($position=12;$position<=13;$position++){$sum=0;$weight=$position===12?5:6;for($index=0;$index<$position;$index++){$sum+=(int)$cnpj[$index]*$weight;$weight=$weight===2?9:$weight-1;}$digit=$sum%11<2?0:11-($sum%11);if((int)$cnpj[$position]!==$digit)return false;}
+        return true;
     }
 }
