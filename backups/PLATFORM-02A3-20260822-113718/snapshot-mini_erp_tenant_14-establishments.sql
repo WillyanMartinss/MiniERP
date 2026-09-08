@@ -1,1 +1,0 @@
-INSERT INTO `establishments` VALUES (5,14,'07924387000112','willyan informatica','willyan info','PR','','','','1','Avenida Maringa','1354','Bloco D; Unidade 7','Emiliano Perneta','1234567','PINHAIS','PR','83324442','1058','BRASIL','4130124500','rma@fagundez.com','MATRIZ',1,'ativo','INCOMPLETE','2026-08-21 15:51:30','2026-08-21 15:51:30');
