@@ -123,4 +123,4 @@ Consulte o `composer.json`. Contate o autor antes de redistribuir.
 
 ---
 
-Desenvolvido por [WillSPACCE](https://github.com/WillSPACCE).
+Desenvolvido por [WillYANMARTINS](https://github.com/WillyanMartinss).
