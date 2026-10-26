@@ -405,3 +405,55 @@ CREATE TABLE IF NOT EXISTS stock_movements (id BIGINT UNSIGNED AUTO_INCREMENT PR
 CREATE TABLE IF NOT EXISTS stock_pending_lots (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,tenant_id INT UNSIGNED NOT NULL,location_id BIGINT UNSIGNED NOT NULL,lot_code VARCHAR(100) NOT NULL,quantity_received DECIMAL(18,4) NOT NULL DEFAULT 0,manufactured_at DATE NULL,expires_at DATE NULL,source_document VARCHAR(120) NULL,notes VARCHAR(500) NULL,status VARCHAR(24) NOT NULL DEFAULT 'PENDING',linked_product_id INT NULL,linked_lot_id BIGINT UNSIGNED NULL,linked_at DATETIME NULL,created_by BIGINT UNSIGNED NULL,created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,KEY ix_pending_lot_tenant_status(tenant_id,status,created_at),KEY ix_pending_lot_code(tenant_id,lot_code),CONSTRAINT fk_pending_lot_location FOREIGN KEY(location_id) REFERENCES stock_locations(id),CONSTRAINT fk_pending_lot_product FOREIGN KEY(linked_product_id) REFERENCES produtos(id),CONSTRAINT fk_pending_lot_stock_lot FOREIGN KEY(linked_lot_id) REFERENCES stock_lots(id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 CREATE TABLE IF NOT EXISTS financial_accounts (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,tenant_id INT UNSIGNED NOT NULL,account_type VARCHAR(10) NOT NULL,source_type VARCHAR(30) NOT NULL DEFAULT 'MANUAL',source_id BIGINT UNSIGNED NULL,person_id INT NULL,description VARCHAR(255) NOT NULL,document_number VARCHAR(80) NULL,issue_date DATE NOT NULL,due_date DATE NOT NULL,original_amount DECIMAL(18,2) NOT NULL,paid_amount DECIMAL(18,2) NOT NULL DEFAULT 0,status VARCHAR(20) NOT NULL DEFAULT 'OPEN',category VARCHAR(80) NULL,payment_method VARCHAR(40) NULL,notes VARCHAR(500) NULL,created_by BIGINT UNSIGNED NULL,created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,UNIQUE KEY uq_financial_source(tenant_id,account_type,source_type,source_id),KEY ix_financial_due(tenant_id,account_type,status,due_date),KEY ix_financial_person(tenant_id,person_id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 CREATE TABLE IF NOT EXISTS financial_payments (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,tenant_id INT UNSIGNED NOT NULL,account_id BIGINT UNSIGNED NOT NULL,amount DECIMAL(18,2) NOT NULL,paid_at DATETIME NOT NULL,payment_method VARCHAR(40) NULL,notes VARCHAR(500) NULL,created_by BIGINT UNSIGNED NULL,created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,KEY ix_financial_payment_account(tenant_id,account_id,paid_at),CONSTRAINT fk_financial_payment_account FOREIGN KEY(account_id) REFERENCES financial_accounts(id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- CT-e e MDF-e rodoviarios: rascunhos e validacao local isolados por empresa.
+CREATE TABLE IF NOT EXISTS transport_documents (
+ id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+ tenant_id INT UNSIGNED NOT NULL,
+ model CHAR(2) NOT NULL,
+ title VARCHAR(160) NOT NULL,
+ status VARCHAR(24) NOT NULL DEFAULT 'DRAFT',
+ payload_json LONGTEXT NOT NULL,
+ snapshot_json LONGTEXT NOT NULL,
+ validation_json LONGTEXT NULL,
+ revision INT UNSIGNED NOT NULL DEFAULT 1,
+ created_by BIGINT UNSIGNED NOT NULL,
+ updated_by BIGINT UNSIGNED NOT NULL,
+ created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+ KEY ix_transport_scope (tenant_id,model,updated_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE IF NOT EXISTS transport_vehicles (
+ id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+ tenant_id INT UNSIGNED NOT NULL,
+ plate VARCHAR(7) NOT NULL,
+ state CHAR(2) NOT NULL,
+ renavam VARCHAR(11) NOT NULL DEFAULT '',
+ tare_kg INT UNSIGNED NOT NULL DEFAULT 0,
+ capacity_kg INT UNSIGNED NOT NULL DEFAULT 0,
+ wheel_type CHAR(2) NOT NULL DEFAULT '02',
+ body_type CHAR(2) NOT NULL DEFAULT '00',
+ owner_tax_id VARCHAR(14) NOT NULL DEFAULT '',
+ owner_name VARCHAR(150) NOT NULL DEFAULT '',
+ owner_rntrc VARCHAR(8) NOT NULL DEFAULT '',
+ ownership CHAR(1) NOT NULL DEFAULT '0',
+ updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+ UNIQUE KEY uq_transport_plate (tenant_id,plate)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE IF NOT EXISTS transport_settings (
+ tenant_id INT UNSIGNED PRIMARY KEY,
+ payload_json LONGTEXT NOT NULL,
+ updated_by BIGINT UNSIGNED NOT NULL,
+ updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE IF NOT EXISTS transport_document_events (
+ id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+ tenant_id INT UNSIGNED NOT NULL,
+ document_id BIGINT UNSIGNED NOT NULL,
+ revision INT UNSIGNED NOT NULL,
+ action VARCHAR(30) NOT NULL,
+ actor_id BIGINT UNSIGNED NOT NULL,
+ details_json LONGTEXT NOT NULL,
+ created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ KEY ix_transport_events (tenant_id,document_id,id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

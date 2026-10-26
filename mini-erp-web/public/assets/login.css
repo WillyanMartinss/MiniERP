@@ -194,3 +194,41 @@ button:focus { outline: none; }
 .auth-form input[type="email"], .auth-form input[type="password"], .auth-form input[type="text"]{ width:100%; padding:12px 14px; border-radius:8px; border:1px solid rgba(34,50,80,0.06); }
 .alert{ background:#f1f8ff; border:1px solid #d0e8ff; padding:10px 12px; border-radius:8px; color:#0d47a1; font-weight:600; margin-bottom:12px; }
 
+
+/* Shared branding and touch-friendly login, preserving the desktop slider. */
+.login-shell .tenant-login-name {
+  display:flex;flex-direction:column;gap:5px;width:100%;margin:0 0 16px;padding:12px 14px;
+  border:1px solid #c8daf6;border-left:3px solid #1e88e5;border-radius:10px;
+  background:#edf4ff;color:#204ea5;text-align:left;overflow-wrap:anywhere;
+}
+.login-shell .tenant-login-label {font-size:11px;font-weight:600;line-height:1.4;color:#526580;}
+.login-shell #loginCompanyName {font-size:16px;font-weight:700;line-height:1.35;}
+.login-shell .tenant-login-logo {display:flex;justify-content:center;margin:0 0 14px;width:100%}
+.login-shell .tenant-login-logo img {display:block;max-width:180px;max-height:72px;width:auto;height:auto;object-fit:contain}
+.login-mobile-brand {display:none}
+.login-shell .password-wrap {position:relative;width:100%}
+.login-shell .password-wrap input {padding-right:52px}
+.login-shell .toggle-password {width:44px;height:44px;padding:0;right:4px;color:#1565c0;letter-spacing:0}
+.login-shell button:focus-visible,.login-shell a:focus-visible {outline:3px solid #72aaff;outline-offset:3px}
+.login-shell input {font-size:16px}
+@media (max-width:700px) {
+  .login-shell {padding:max(16px,env(safe-area-inset-top)) 12px max(16px,env(safe-area-inset-bottom));}
+  .login-shell .login-mobile-brand {
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:24px 20px 20px;background:linear-gradient(to right,#1e88e5,#1565c0);color:#fff;
+  }
+  .login-mobile-brand img {display:block;width:min(260px,100%);height:auto;object-fit:contain}
+  .login-mobile-brand p {margin:8px 0 0;font-size:13px;color:#fff}
+  .login-shell .sign-in-container form {padding-top:22px}
+  .login-shell .login-footer .footer-brand {display:none}
+  .login-shell .login-footer {background:#fff}
+}
+@media (min-width:701px) and (max-width:899px) {
+  .login-shell {padding:24px 16px;min-height:100dvh}
+  .login-shell .form-container form {padding:24px}
+  .login-shell .overlay-panel {padding:24px}
+  .login-shell .overlay-logo {max-width:100%;height:auto}
+}
+@media (prefers-reduced-motion:reduce) {
+  .login-shell,.login-shell * {animation:none!important;transition:none!important}
+}

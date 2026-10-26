@@ -17,6 +17,11 @@ if (!$tenant) {
     exit('Empresa não encontrada.');
 }
 
+if (!\MiniErp\Authorization\PlatformDatabaseAccess::canView($identity, $tenant)) {
+    http_response_code(403);
+    exit('Acesso ao banco restrito ao SUPER_ADMIN.');
+}
+
 $db = (string) ($tenant['db_name'] ?? '');
 $cfg = (require __DIR__ . '/../../config.php')['db'];
 $server = new PDO(

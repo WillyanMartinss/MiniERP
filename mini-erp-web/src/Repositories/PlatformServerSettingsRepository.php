@@ -32,9 +32,15 @@ final class PlatformServerSettingsRepository
 
     public function sefazTechnical():array
     {
-        $defaults=['sefaz_technical_cnpj'=>'','sefaz_technical_contact'=>'','sefaz_technical_email'=>'','sefaz_technical_phone'=>'','sefaz_csrt_id'=>'','sefaz_csrt_env'=>'MINI_ERP_SEFAZ_CSRT'];
+        $defaults=array_fill_keys(self::SEFAZ_ALLOWED,'');
         $rows=$this->pdo->query("SELECT setting_key,setting_value FROM platform_server_settings WHERE setting_key LIKE 'sefaz_%'")->fetchAll(PDO::FETCH_KEY_PAIR);
         return array_replace($defaults,array_intersect_key($rows?:[],$defaults));
+    }
+
+    public function clearSefazTechnical():void
+    {
+        $marks=implode(',',array_fill(0,count(self::SEFAZ_ALLOWED),'?'));
+        $this->pdo->prepare("DELETE FROM platform_server_settings WHERE setting_key IN ($marks)")->execute(self::SEFAZ_ALLOWED);
     }
 
     public function saveSefazTechnical(array $input,int $actorId):void

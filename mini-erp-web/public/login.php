@@ -4,6 +4,7 @@ declare(strict_types=1);
 // A UI histórica permanece intacta; este controller adiciona o fluxo tenant seguro.
 if (session_status() === PHP_SESSION_NONE) session_start();
 $tenantSlug = strtolower(trim(is_string($_GET['empresa'] ?? null) ? $_GET['empresa'] : ''));
+if ($tenantSlug === '') $tenantSlug = 'willyaninfo';
 $tenantLogin = $tenantSlug !== '';
 $tenantDisplay = null;
 $tenantReader = null;
@@ -29,6 +30,8 @@ if ($tenantLogin) {
         $tenantDisplay = $tenantReader->findTenantBySlug($tenantSlug);
         $tenantUnavailable = $tenantDisplay === null;
         if ($tenantDisplay !== null) {
+            require_once __DIR__ . '/../src/Services/TenantLoginLogoStorage.php';
+            $tenantDisplay['logo'] = (new \MiniErp\Services\TenantLoginLogoStorage(__DIR__))->url((int) $tenantDisplay['tenant_id']);
             $loginPolicy=(new \MiniErp\Repositories\TenantAccessPolicyRepository($main))->effectiveForTenant((int)$tenantDisplay['tenant_id']);
             if (($loginPolicy['access_mode']??'FULL') === 'BLOCKED') {
                 $tenantUnavailable=true;$tenantPolicyMessage='Acesso temporariamente bloqueado.';
@@ -135,15 +138,19 @@ $_SESSION['erp_login_csrf'] ??= bin2hex(random_bytes(32));
     <link rel="manifest" href="/assets/images/site.webmanifest">
     <meta name="theme-color" content="#1e88e5">
     <meta name="description" content="Acesse o Mini ERP - sistema de gestão">
-    <link rel="stylesheet" href="/assets/style.css?v=login-mobile2">
-    <link rel="stylesheet" href="/assets/login.css?v=login-mobile2">
-    <script src="/assets/login.js" defer></script>
+    <link rel="stylesheet" href="/assets/style.css?v=login-mobile3">
+    <link rel="stylesheet" href="/assets/login.css?v=login-mobile3">
+    <script src="/assets/login.js?v=login-mobile3" defer></script>
 </head>
 <body class="page-ready">
     <main class="login-shell">
         <div class="container" id="container">
+            <header class="login-mobile-brand">
+                <img src="/assets/images/logo_login.png" alt="MiniERPWeb" width="2172" height="724">
+                <p>Sua gest&atilde;o em um s&oacute; lugar</p>
+            </header>
             <div class="form-container sign-up-container">
-                <form method="POST" action="/register.php">
+                <form id="signupForm" method="POST" action="/register.php">
                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['erp_login_csrf'], ENT_QUOTES, 'UTF-8') ?>">
                     <input type="hidden" name="empresa" value="<?= htmlspecialchars($tenantSlug, ENT_QUOTES, 'UTF-8') ?>">
                     <h1>Criar Conta</h1>
@@ -154,22 +161,25 @@ $_SESSION['erp_login_csrf'] ??= bin2hex(random_bytes(32));
                     </div>
                     <span>ou use seu e-mail para registro</span>
                     <input type="text" name="nome" placeholder="Nome" required />
-                    <input type="email" name="email" placeholder="Email" required />
+                    <input type="email" id="signupEmail" name="email" placeholder="Email" autocomplete="section-signup username" inputmode="email" autocapitalize="none" spellcheck="false" required />
                     <input type="tel" name="telefone" placeholder="Telefone (opcional)" autocomplete="tel" />
-                    <input type="password" name="senha" placeholder="Senha (mínimo 8 caracteres)" minlength="8" required />
+                    <input type="password" id="signupPassword" name="senha" placeholder="Senha (mínimo 8 caracteres)" autocomplete="section-signup new-password" minlength="8" required />
                     <button type="submit" class="btn primary" id="signupBtnForm" <?= !$tenantLogin || $tenantUnavailable ? 'disabled' : '' ?>>Solicitar acesso</button>
                 </form>
             </div>
             <div class="form-container sign-in-container">
-                <form method="POST" action="<?= $tenantLogin ? '/login.php?empresa=' . rawurlencode($tenantSlug) : '/?page=login' ?>">
+                <form id="loginForm" method="POST" action="<?= $tenantLogin ? '/login.php?empresa=' . rawurlencode($tenantSlug) : '/?page=login' ?>">
                     <input type="hidden" name="action" value="<?= $tenantLogin ? 'tenant_login' : 'login' ?>">
                     <?php if ($tenantLogin): ?><input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['erp_login_csrf'], ENT_QUOTES, 'UTF-8') ?>"><?php endif; ?>
                     <h1>Entrar</h1>
+                    <div class="tenant-login-name" role="group" aria-labelledby="loginCompanyLabel">
+                        <span id="loginCompanyLabel" class="tenant-login-label">Empresa que você está acessando</span>
+                        <strong id="loginCompanyName"><?= htmlspecialchars($tenantDisplayName !== '' ? $tenantDisplayName : ($tenantLogin ? 'Empresa não identificada' : 'Acesso geral — nenhuma empresa selecionada'), ENT_QUOTES, 'UTF-8') ?></strong>
+                    </div>
                     <?php if($loginError): ?>
                         <div class="login-error" role="alert" style="color:#c62828;margin-bottom:12px;font-weight:700;"><?php echo htmlspecialchars($loginError); ?></div>
                     <?php endif; ?>
                     <?php if (!empty($tenantDisplay)): ?>
-                        <div class="tenant-login-name">Empresa: <?= htmlspecialchars($tenantDisplayName, ENT_QUOTES, 'UTF-8') ?></div>
                         <?php if (!empty($tenantDisplay['logo'])): ?>
                             <div class="tenant-login-logo"><img src="<?= htmlspecialchars($tenantDisplay['logo']) ?>" alt="Logo"></div>
                         <?php endif; ?>
@@ -180,9 +190,9 @@ $_SESSION['erp_login_csrf'] ??= bin2hex(random_bytes(32));
                         <a href="/oauth.php?provider=linkedin&amp;empresa=<?= rawurlencode($tenantSlug) ?>" class="social" aria-label="Continuar com LinkedIn">in</a>
                     </div>
                     <span>ou use sua conta</span>
-                    <input type="email" name="email" placeholder="Email" autocomplete="username" required />
+                    <input type="email" id="loginEmail" name="email" placeholder="Email" aria-label="E-mail" autocomplete="section-login username" inputmode="email" autocapitalize="none" spellcheck="false" required />
                     <div class="password-wrap">
-                        <input type="password" name="senha" placeholder="Senha" autocomplete="current-password" required aria-describedby="togglePassword">
+                        <input type="password" id="loginPassword" name="senha" placeholder="Senha" autocomplete="section-login current-password" autocapitalize="none" autocorrect="off" spellcheck="false" aria-label="Senha" required>
                         <button type="button" class="toggle-password" id="togglePassword" aria-label="Mostrar senha">👁️</button>
                     </div>
                     <a href="/forgot.php" class="forgot-link">Esqueceu sua senha?</a>

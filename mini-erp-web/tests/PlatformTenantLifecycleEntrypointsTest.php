@@ -25,6 +25,11 @@ lifecycleSourceAssert(strpos($index, "actions['users']") !== false, 'users visib
 lifecycleSourceAssert(strpos($index, "actions['erp']") !== false, 'ERP visibility follows policy');
 lifecycleSourceAssert(strpos($index, 'aria-disabled="true"') !== false, 'forbidden UI actions are disabled');
 lifecycleSourceAssert(strpos($placeholder, 'requireAuthorizedPlatformContext') !== false, 'placeholder requires platform authorization');
+lifecycleSourceAssert(str_contains($placeholder, "header('Location: /login.php?empresa=' . rawurlencode((string) \$tenant['slug']), true, 303)"), 'ERP access opens the selected company login');
+lifecycleSourceAssert(!str_contains($placeholder, "Location: /?page=dashboard"), 'platform access cannot bypass the company login');
+foreach (['erp_global_admin_id', 'erp_user_id', 'erp_tenant_id', 'erp_tenant_slug', 'PLATFORM_SSO'] as $sessionKey) {
+    lifecycleSourceAssert(!str_contains($placeholder, $sessionKey), 'platform entry does not establish ERP authentication: ' . $sessionKey);
+}
 
 $combined = strtoupper($index . $placeholder . $lifecycle);
 foreach (['CREATE DATABASE', 'INSERT INTO', 'UPDATE TENANTS', 'DELETE FROM', 'ALTER TABLE', 'DROP DATABASE'] as $forbidden) {

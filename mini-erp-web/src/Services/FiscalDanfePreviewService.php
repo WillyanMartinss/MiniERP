@@ -48,6 +48,25 @@ final class FiscalDanfePreviewService
             $items[]=['product'=>$product,'tax'=>$tax,'values'=>['quantity_commercial'=>$item['quantity'],'quantity_taxable'=>bcmul((string)$item['quantity'],(string)($item['conversion_factor']?:'1'),4),'unit_value_commercial'=>$item['unit_price'],'unit_value_taxable'=>bcdiv((string)$item['unit_price'],(string)($item['conversion_factor']?:'1'),4),'gross_total'=>$item['gross_total'],'discount_amount'=>$item['discount_amount'],'freight_amount'=>$item['item_freight'],'insurance_amount'=>$item['item_insurance'],'other_amount'=>$item['item_other'],'net_total'=>$item['net_total']]];
         }
         if(!$items)throw new FiscalDanfeException('PREVIEW_ITEMS_MISSING','Adicione produtos ao pedido antes de gerar a prévia DANFE.');
+        foreach ($items as &$previewItem) {
+            if (!preg_match('/^[0-8]$/', (string) ($previewItem['product']['merchandise_origin'] ?? ''))) {
+                $warnings[] = $preflight->warning('PRODUCT_ORIGIN_PENDING', 'Origem da mercadoria pendente; valor técnico usado somente na prévia.', ['product_id' => (int) $previewItem['product']['id']]);
+                $previewItem['product']['merchandise_origin'] = '0';
+            }
+            foreach (['unidade', 'taxable_unit'] as $unitField) {
+                if (trim((string) ($previewItem['product'][$unitField] ?? '')) === '') {
+                    $warnings[] = $preflight->warning('PRODUCT_UNIT_PENDING', 'Unidade do produto pendente.', ['product_id' => (int) $previewItem['product']['id'], 'field' => $unitField]);
+                    // Marcador explícito somente na prévia; nunca altera o cadastro ou o XML fiscal.
+                    $previewItem['product'][$unitField] = 'PEND';
+                }
+            }
+        }
+        unset($previewItem);
+        $itemsTotal = '0.00';
+        foreach ($items as $previewItem) $itemsTotal = bcadd($itemsTotal, (string) $previewItem['values']['net_total'], 2);
+        if (bccomp($itemsTotal, (string) $order['grand_total'], 2) !== 0) {
+            throw new FiscalDanfeException('PREVIEW_TOTAL_MISMATCH', 'O total do pedido diverge da soma dos itens. Abra o pedido, confira descontos, frete e valores e salve novamente antes de gerar a prévia.');
+        }
 
         // Série 999 e número derivados são identificadores exclusivamente técnicos,
         // necessários para o layout do XML. Nunca são reservados nem persistidos.

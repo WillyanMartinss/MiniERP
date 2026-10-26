@@ -8,7 +8,7 @@ function mobileUiAssert(bool $condition, string $label): void
 }
 
 $page = (string) file_get_contents(__DIR__ . '/../public/index.php');
-$js = (string) file_get_contents(__DIR__ . '/../public/assets/app.js');
+$js = (string) file_get_contents(__DIR__ . '/../public/assets/sidebar-menu.js');
 $css = (string) file_get_contents(__DIR__ . '/../public/assets/style.css');
 
 mobileUiAssert(str_contains($page, 'aria-controls="sidebar-drawer"') && str_contains($page, 'data-drawer-close'), 'MobileDrawerAccessibleControlsTest');

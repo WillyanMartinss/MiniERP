@@ -745,6 +745,8 @@ if ($page !== 'login' && !$currentUser) {
     exit;
 }
 
+if ($page === 'transporte') require __DIR__.'/includes/transport_controller.php';
+
 $dashboardToday=new DateTimeImmutable('today',new DateTimeZone('America/Sao_Paulo'));
 $validDashboardDate=static fn(string$value):bool=>preg_match('/^\d{4}-\d{2}-\d{2}$/',$value)===1;
 $dashboardFrom=(string)($_GET['from']??$dashboardToday->modify('-29 days')->format('Y-m-d'));
@@ -881,12 +883,13 @@ if (is_dir($imagesDir)) {
     <link rel="stylesheet" href="<?= htmlspecialchars($assetUrl('erp-companies.css')) ?>">
     <link rel="stylesheet" href="<?= htmlspecialchars($assetUrl('erp-companies-modern.css')) ?>">
     <link rel="stylesheet" href="<?= htmlspecialchars($assetUrl('app-ui.css')) ?>">
+    <?php if ($page === 'transporte'): ?><link rel="stylesheet" href="<?= htmlspecialchars($assetUrl('transport.css')) ?>"><?php endif; ?>
     <link rel="stylesheet" href="<?= htmlspecialchars($assetUrl('app-feedback.css')) ?>">
     <link rel="stylesheet" href="<?= htmlspecialchars($assetUrl('ui-forms.css')) ?>">
     <link rel="stylesheet" href="<?= htmlspecialchars($assetUrl('fiscal-notes.css')) ?>">
     <?php if($page === 'pedidos'): ?><link rel="stylesheet" href="<?= htmlspecialchars($assetUrl('order-editor.css')) ?>"><?php endif; ?>
     <?php if($page === 'cadastro' && ($_GET['tab']??'') === 'xml'): ?><link rel="stylesheet" href="<?= htmlspecialchars($assetUrl('xml-catalog.css')) ?>"><?php endif; ?>
-    <script src="https://unpkg.com/feather-icons"></script>
+    <script src="<?= htmlspecialchars($assetUrl('vendor/feather.min.js')) ?>"></script>
     <script src="<?= htmlspecialchars($assetUrl('cnpj-lookup.js')) ?>" defer></script>
     <script src="<?= htmlspecialchars($assetUrl('app-ui.js')) ?>" defer></script>
     <script src="<?= htmlspecialchars($assetUrl('app-feedback.js')) ?>" defer></script>
@@ -963,19 +966,27 @@ if (is_dir($imagesDir)) {
                     </li>
 
                     <li class="drawer-cat">
+                        <button class="cat-toggle <?= $page === 'transporte' ? 'active' : '' ?>" aria-expanded="false"><i data-feather="truck"></i><span>Transporte</span></button>
+                        <ul class="drawer-submenu">
+                            <?php foreach (['cte'=>'CT-e','mdfe'=>'MDF-e','veiculos'=>'Veículos','configuracoes'=>'Configurações de transporte'] as $transportKey=>$transportLabel): ?>
+                            <li><a class="<?= $page === 'transporte' && ($_GET['tab'] ?? 'cte') === $transportKey ? 'active' : '' ?>" href="?page=transporte&amp;tab=<?= $transportKey ?>"><?= htmlspecialchars($transportLabel) ?></a></li>
+                            <?php endforeach; ?>
+                        </ul>
+                    </li>
+                    <li class="drawer-cat">
                         <button class="cat-toggle" aria-expanded="false"><i data-feather="settings"></i><span>Configuração</span></button>
                         <ul class="drawer-submenu">
                             <li><a href="?page=configuracao&tab=empresa">Empresa</a></li>
                             <li><a href="?page=configuracao&tab=usuarios">Usuários</a></li>
                             <li><a href="?page=configuracao#fiscal">Fiscal</a></li>
                             <li><a href="?page=configuracao#nfce">NFC-e</a></li>
-                            <li><a href="?page=configuracao#mdfe">MDF-e</a></li>
                             <li><a href="?page=configuracao#contador">Contador</a></li>
                         </ul>
                     </li>
                 </ul>
             </div>
         </aside>
+        <script src="<?= htmlspecialchars($assetUrl('sidebar-menu.js')) ?>"></script>
 
         <main class="main-content">
             <!-- Cabeçalho da aplicação -->
@@ -1007,13 +1018,16 @@ if (is_dir($imagesDir)) {
                         </div>
                         <div class="menu-item-wrapper"><a class="menu-item <?= navClass('estoque', $page) ?>" href="?page=estoque">ESTOQUE</a></div>
                         <div class="menu-item-wrapper">
+                            <a class="menu-item <?= navClass('transporte', $page) ?>" href="?page=transporte">TRANSPORTE</a>
+                            <div class="submenu"><a href="?page=transporte&amp;tab=cte">CT-e</a><a href="?page=transporte&amp;tab=mdfe">MDF-e</a><a href="?page=transporte&amp;tab=veiculos">Ve&#237;culos</a><a href="?page=transporte&amp;tab=configuracoes">Configura&#231;&#245;es de transporte</a></div>
+                        </div>
+                        <div class="menu-item-wrapper">
                             <a class="menu-item <?= navClass('configuracao', $page) ?>" href="?page=configuracao">CONFIGURAÇÃO</a>
                             <div class="submenu">
                                 <a href="?page=configuracao&tab=empresa">Empresa</a>
                                 <a href="?page=configuracao&tab=usuarios">Usuários</a>
                                 <a href="?page=configuracao#fiscal">Fiscal</a>
                                 <a href="?page=configuracao#nfce">NFC-e</a>
-                                <a href="?page=configuracao#mdfe">MDF-e</a>
                                 <a href="?page=configuracao#contador">Contador</a>
                             </div>
                         </div>
@@ -1619,6 +1633,10 @@ if (is_dir($imagesDir)) {
 
                 case 'estoque':
                     include __DIR__.'/includes/stock_page.php';
+                    break;
+
+                case 'transporte':
+                    include __DIR__.'/includes/transport_page.php';
                     break;
 
                 case 'financeiro':
@@ -3176,7 +3194,7 @@ if (is_dir($imagesDir)) {
             <footer class="site-credit erp-credit">Desenvolvido por <a href="https://willspacce.netlify.app/" target="_blank" rel="noopener noreferrer" aria-label="Portfólio de Willyan Martins">Willyan Martins <span aria-hidden="true">›</span></a></footer>
         </main>
     </div>
-    <?php if ($page === 'dashboard'): ?><script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"></script><?php endif; ?>
+    <?php if ($page === 'dashboard'): ?><script src="<?= htmlspecialchars($assetUrl('vendor/chart.umd.min.js')) ?>"></script><?php endif; ?>
     <script src="<?= htmlspecialchars($assetUrl('app.js')) ?>"></script>
 </body>
 </html>

@@ -77,9 +77,10 @@ final class ControlPlaneReader implements ControlPlaneReaderContract
         return $stmt->fetchAll();
     }
 
-    public function searchTenants(string $query, int $page, int $limit, string $status = ''): array
+    public function searchTenants(string $query, int $page, int $limit, string $status = '', ?AuthenticatedPlatformAdmin $identity = null): array
     {
         $page=max(1,$page);$limit=max(1,min(100,$limit));$where=[];$params=[];$query=trim($query);
+        if($identity!==null)$where[]=\MiniErp\Authorization\PlatformDatabaseAccess::visibilitySql($identity);
         if($query!==''){$where[]='(razao_social LIKE :q OR nome_fantasia LIKE :q OR cnpj LIKE :q OR slug LIKE :q'.(ctype_digit($query)?' OR id=:exact_id':'').')';$params['q']='%'.$query.'%';if(ctype_digit($query))$params['exact_id']=(int)$query;}
         if($status!==''){$where[]=$status==='bloqueada'?'blocked=1':'status=:status';if($status!=='bloqueada')$params['status']=$status;}
         $sql=' FROM tenants'.($where?' WHERE '.implode(' AND ',$where):'');$count=$this->pdo->prepare('SELECT COUNT(*)'.$sql);$count->execute($params);$total=(int)$count->fetchColumn();$version=$this->hasSchemaVersionColumn()?'schema_version':'NULL AS schema_version';$stmt=$this->pdo->prepare("SELECT id AS tenant_id,razao_social,nome_fantasia,cnpj,slug,status,blocked,db_name,{$version}".$sql.' ORDER BY id DESC LIMIT :limit OFFSET :offset');foreach($params as $k=>$v)$stmt->bindValue(':'.$k,$v,is_int($v)?PDO::PARAM_INT:PDO::PARAM_STR);$stmt->bindValue(':limit',$limit,PDO::PARAM_INT);$stmt->bindValue(':offset',($page-1)*$limit,PDO::PARAM_INT);$stmt->execute();return ['items'=>$stmt->fetchAll(),'total'=>$total,'page'=>$page,'limit'=>$limit];

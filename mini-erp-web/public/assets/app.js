@@ -35,6 +35,8 @@ document.addEventListener('DOMContentLoaded', function () {
         document.addEventListener('click', function (e) {
             const a = e.target.closest('a');
             if (!a) return;
+            // Mobile menu links navigate natively, without a delayed loading overlay.
+            if (a.closest('#sidebar-drawer') && window.matchMedia('(max-width: 899px)').matches) return;
             const href = a.getAttribute('href');
             if (!href || href.startsWith('#') || href.startsWith('mailto:') || href.startsWith('tel:')) return;
             // only internal navigations
@@ -83,6 +85,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Cada rota interna do menu recebe um ícone próprio antes de inicializar o Feather.
     const drawerIconRoutes = [
+        ['page=transporte&tab=cte','file-text'],['page=transporte&tab=mdfe','clipboard'],
+        ['page=transporte&tab=veiculos','truck'],['page=transporte&tab=configuracoes','sliders'],
         ['page=dashboard&tab=overview','layout'],['page=dashboard&tab=sales','trending-up'],
         ['page=dashboard&tab=financial','dollar-sign'],
         ['financial_tab=receivable','arrow-down-circle'],['financial_tab=payable','arrow-up-circle'],
@@ -156,161 +160,6 @@ document.addEventListener('DOMContentLoaded', function () {
             window.addEventListener('resize', adjustPosition);
             window.addEventListener('scroll', adjustPosition, { passive: true });
         });
-    })();
-
-    // Drawer hamburger behavior
-    (function () {
-        const hamburger = document.getElementById('hamburger');
-        const drawer = document.getElementById('sidebar-drawer');
-        const backdrop = document.getElementById('drawer-backdrop');
-        const closeButton = drawer?.querySelector('[data-drawer-close]');
-        // drawerClose button removed; compact mode on desktop will be handled by CSS/JS
-        if (!hamburger || !drawer || !backdrop) return;
-
-        function isMobile() { return window.innerWidth < 900; }
-
-        function openDrawer() {
-            drawer.classList.add('open');
-            backdrop.classList.add('open');
-            drawer.setAttribute('aria-hidden', 'false');
-            hamburger.setAttribute('aria-expanded', 'true');
-            document.body.classList.add('mobile-menu-open');
-            openAllSubmenus();
-            closeButton?.focus({ preventScroll: true });
-        }
-        function closeDrawer() {
-            drawer.classList.remove('open');
-            backdrop.classList.remove('open');
-            drawer.setAttribute('aria-hidden', 'true');
-            hamburger.setAttribute('aria-expanded', 'false');
-            document.body.classList.remove('mobile-menu-open');
-            if (isMobile()) hamburger.focus({ preventScroll: true });
-        }
-
-        // Toggle only on mobile; on desktop drawer stays fixed open via CSS
-        hamburger.addEventListener('click', function () {
-            if (!isMobile()) return;
-            if (drawer.classList.contains('open')) closeDrawer(); else openDrawer();
-        });
-        backdrop.addEventListener('click', function () { if (isMobile()) closeDrawer(); });
-        closeButton?.addEventListener('click', closeDrawer);
-        drawer.querySelectorAll('a').forEach(link => link.addEventListener('click', function () {
-            if (isMobile()) closeDrawer();
-        }));
-
-        const expandControl = drawer.querySelector('[data-drawer-expand]');
-        let expandedByHover = false;
-
-        // Categorias em acordeão: apenas a opção clicada permanece aberta.
-        drawer.querySelectorAll('.cat-toggle').forEach(btn => {
-            btn.addEventListener('click', function () {
-                const wasHoverExpansion = expandedByHover;
-                expandedByHover = false;
-                drawer.classList.remove('hover-expanded');
-                expandControl?.setAttribute('aria-expanded', 'false');
-                const ul = btn.nextElementSibling;
-                if (!ul) return;
-                const shouldOpen = wasHoverExpansion || !ul.classList.contains('open');
-                drawer.querySelectorAll('.drawer-submenu').forEach(other => {
-                    other.classList.remove('open');
-                    const otherButton = other.previousElementSibling;
-                    if (otherButton?.classList.contains('cat-toggle')) otherButton.setAttribute('aria-expanded', 'false');
-                });
-                ul.classList.toggle('open', shouldOpen);
-                btn.setAttribute('aria-expanded', String(shouldOpen));
-            });
-
-            btn.closest('.drawer-cat')?.addEventListener('mouseenter', function () {
-                if (isMobile()) return;
-                const ul = btn.nextElementSibling;
-                if (!ul || expandControl?.getAttribute('aria-expanded') === 'true') return;
-                expandedByHover = true;
-                drawer.querySelectorAll('.drawer-submenu').forEach(other => {
-                    const isCurrent = other === ul;
-                    other.classList.toggle('open', isCurrent);
-                    const otherButton = other.previousElementSibling;
-                    if (otherButton?.classList.contains('cat-toggle')) otherButton.setAttribute('aria-expanded', String(isCurrent));
-                });
-            });
-        });
-
-        function openAllSubmenus() {
-            drawer.querySelectorAll('.drawer-submenu').forEach((ul) => {
-                ul.classList.add('open');
-                const btn = ul.previousElementSibling;
-                if (btn?.classList.contains('cat-toggle')) btn.setAttribute('aria-expanded', 'true');
-            });
-        }
-
-        function closeAllSubmenus() {
-            drawer.querySelectorAll('.drawer-submenu').forEach((ul) => {
-                ul.classList.remove('open');
-                Array.from(ul.querySelectorAll('li')).forEach(li => li.style.transitionDelay = '');
-                const btn = ul.previousElementSibling;
-                if (btn && btn.classList.contains('cat-toggle')) btn.setAttribute('aria-expanded', 'false');
-            });
-        }
-
-        document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && isMobile()) closeDrawer(); });
-
-        // Desktop click-to-expand and hover-to-expand: manage explicit vs hover expansion
-        expandControl?.addEventListener('click', function () {
-            if (isMobile()) return;
-            expandedByHover = false;
-            const expanding = expandControl.getAttribute('aria-expanded') !== 'true';
-            drawer.classList.toggle('expanded', expanding);
-            drawer.classList.toggle('compact', !expanding);
-            expandControl.setAttribute('aria-expanded', String(expanding));
-            expandControl.setAttribute('aria-label', expanding ? 'Recolher opções' : 'Mostrar todas as opções');
-            expandControl.title = expanding ? 'Recolher opções' : 'Mostrar todas as opções';
-            if (expanding) openAllSubmenus(); else closeAllSubmenus();
-        });
-
-        // hover behavior: when user moves mouse over drawer on desktop, expand temporarily
-
-        // Fecha (colapsa) o drawer apenas quando o usuário clicar fora dele.
-        document.addEventListener('click', function (e) {
-            if (isMobile()) return;
-            // Se o clique foi dentro do drawer ou no botão hamburger, ignora.
-            if (e.target.closest('#sidebar-drawer') || e.target.closest('#hamburger')) return;
-
-            expandedByHover = false;
-            drawer.classList.remove('expanded');
-            drawer.classList.remove('hover-expanded');
-            drawer.classList.add('compact');
-            expandControl?.setAttribute('aria-expanded', 'false');
-            closeAllSubmenus();
-        });
-
-        // On load and resize, ensure drawer is compact on desktop and operable on mobile
-        function applyResponsive() {
-            if (isMobile()) {
-                drawer.classList.remove('open');
-                drawer.classList.remove('compact');
-                drawer.classList.remove('expanded');
-                drawer.classList.remove('hover-expanded');
-                expandControl?.setAttribute('aria-expanded', 'false');
-                backdrop.classList.remove('open');
-                drawer.setAttribute('aria-hidden', 'true');
-                hamburger.setAttribute('aria-expanded', 'false');
-                hamburger.style.display = '';
-                closeAllSubmenus();
-            } else {
-                document.body.classList.remove('mobile-menu-open');
-                // desktop: compact by default, visible, but without forcing the mobile "open" state
-                drawer.classList.add('compact');
-                drawer.classList.remove('expanded');
-                drawer.classList.remove('hover-expanded');
-                expandControl?.setAttribute('aria-expanded', 'false');
-                drawer.classList.remove('open');
-                drawer.setAttribute('aria-hidden', 'false');
-                backdrop.classList.remove('open');
-                hamburger.style.display = 'none';
-                closeAllSubmenus();
-            }
-        }
-        window.addEventListener('resize', applyResponsive);
-        applyResponsive();
     })();
 
     document.querySelectorAll('.register-tab').forEach(function (tab) {

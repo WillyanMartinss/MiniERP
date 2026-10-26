@@ -42,9 +42,9 @@ final class ControlPlaneBootstrapService
             throw new DomainException('Control-plane access is not authorized.');
         }
 
-        return $this->reader->listTenants();
+        return array_values(array_filter($this->reader->listTenants(), static fn(array $tenant): bool => \MiniErp\Authorization\PlatformDatabaseAccess::canView($identity, $tenant)));
     }
 
     public function searchTenants(AuthenticatedPlatformAdmin $identity,string $query,int $page,int $limit,string $status=''):array
-    {if(!$this->authorizer->isAuthorized($identity))throw new DomainException('Control-plane access is not authorized.');if(!method_exists($this->reader,'searchTenants'))return ['items'=>$this->reader->listTenants(),'total'=>count($this->reader->listTenants()),'page'=>1,'limit'=>100];return $this->reader->searchTenants($query,$page,$limit,$status);}
+    {if(!$this->authorizer->isAuthorized($identity))throw new DomainException('Control-plane access is not authorized.');if(!method_exists($this->reader,'searchTenants'))return ['items'=>$this->listTenants($identity),'total'=>count($this->listTenants($identity)),'page'=>1,'limit'=>100];return $this->reader->searchTenants($query,$page,$limit,$status,$identity);}
 }

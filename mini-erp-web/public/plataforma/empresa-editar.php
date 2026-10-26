@@ -32,6 +32,7 @@ if (empty($_SESSION['platform_tenant_csrf'])) {
 }
 
 $values = $tenant;
+$logoStorage = new \MiniErp\Services\TenantLoginLogoStorage(dirname(__DIR__));
 $error = '';
 $state=FlashFormState::consume($_SESSION);if($state){$values=array_merge($values,$state['old_input']);$error=(string)(reset($state['errors'])?:'Revise os campos.');}
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
@@ -45,8 +46,18 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         $error = 'Sessão do formulário expirada. Recarregue a página.';
     } else {
         try {
+            $logoBytes = null;
+            $logoFile = $_FILES['company_logo'] ?? null;
+            if ($logoFile && ($logoFile['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
+                if (($logoFile['error'] ?? -1) !== UPLOAD_ERR_OK || !is_uploaded_file((string) ($logoFile['tmp_name'] ?? ''))) {
+                    throw new InvalidArgumentException('Falha no envio da logo. Envie uma imagem de até 2 MB.');
+                }
+                $logoBytes = (string) file_get_contents($logoFile['tmp_name']);
+                $logoStorage->normalize($logoBytes);
+            }
             $service = new UpdatePlatformTenantService($repository, $authorizer);
             $service->update($identity, $tenantId, PlatformTenantData::fromArray($_POST));
+            if ($logoBytes !== null) $logoStorage->save($tenantId, $logoBytes);
             $_SESSION['platform_tenant_csrf'] = bin2hex(random_bytes(32));
             header('Location: /plataforma/empresa-editar.php?id=' . $tenantId . $embedQuery . $viewQuery . '&updated=1');
             exit;
@@ -68,7 +79,14 @@ $escape = static fn (mixed $value): string => htmlspecialchars((string) $value, 
 <?php if(isset($_GET['updated'])):?><p class="message success">Alterações salvas com sucesso.</p><?php endif;?>
 <?php if(!$partial):?><label>tenant_id<input class="locked" readonly value="<?= $escape($tenantId) ?>"></label><label>Estado atual<input class="locked" readonly value="<?= $escape($tenant['status'] ?? '') ?>"></label><p>O estado, bloqueio e banco dedicado não podem ser alterados nesta task.</p><?php else:?><p class="muted">Identidade comercial e administrativa da empresa.</p><?php endif;?>
 <?php if($error!==''):?><p class="error" role="alert"><?= $escape($error) ?></p><?php endif;?>
-<form method="post"><input type="hidden" name="csrf_token" value="<?= $escape($_SESSION['platform_tenant_csrf']) ?>">
+<form method="post" enctype="multipart/form-data"><input type="hidden" name="csrf_token" value="<?= $escape($_SESSION['platform_tenant_csrf']) ?>">
+<fieldset style="margin:16px 0;padding:16px;border:1px solid #dbe5f2;border-radius:12px">
+<legend>Logo da empresa</legend>
+<?php if ($companyLogo = $logoStorage->url($tenantId)): ?><img src="<?= $escape($companyLogo) ?>" alt="Logo atual da empresa" style="display:block;max-width:180px;max-height:90px;object-fit:contain;margin-bottom:12px"><?php endif; ?>
+<label for="companyLogo">Enviar ou substituir logo</label>
+<input id="companyLogo" type="file" name="company_logo" accept="image/png,image/jpeg,image/webp" aria-describedby="companyLogoHelp">
+<p id="companyLogoHelp" class="muted">Aparece no login desta empresa. PNG, JPG ou WebP, até 2 MB e 2048 × 2048 pixels. Deixe vazio para manter a logo atual.</p>
+</fieldset>
 <label>Razão social<input id="platform_razao_social" name="razao_social" maxlength="255" required value="<?= $escape($values['razao_social'] ?? '') ?>"></label>
 <label>Nome fantasia<input id="platform_nome_fantasia" name="nome_fantasia" maxlength="255" required value="<?= $escape($values['nome_fantasia'] ?? '') ?>"></label>
 <label>CNPJ<span class="cnpj-control-group"><input id="platform_cnpj" name="cnpj" maxlength="18" required value="<?= $escape($values['cnpj'] ?? '') ?>"><button type="button" class="btn btn-secondary btn-sm" id="btn-buscar-cnpj-plataforma">Consultar CNPJ</button></span></label>

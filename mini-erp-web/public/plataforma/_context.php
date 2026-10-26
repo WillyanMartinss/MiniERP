@@ -26,6 +26,23 @@ function requireAuthorizedPlatformContext(): array
         $service = new ControlPlaneBootstrapService($reader, $authorizer);
         $identity = $service->resolveIdentity($adminId);
 
+        // Todas as telas e ações de empresa passam por esta autorização antes de ler dados.
+        $route = basename((string) ($_SERVER['SCRIPT_NAME'] ?? ''));
+        $tenantIds = array_merge((array) ($_GET['tenant_ids'] ?? []), (array) ($_POST['tenant_ids'] ?? []));
+        foreach ([$_GET, $_POST] as $input) {
+            if (isset($input['tenant_id'])) $tenantIds[] = $input['tenant_id'];
+            if (str_starts_with($route, 'empresa') || in_array($route, ['ajax-certificado.php', 'ajax-sefaz-status.php', 'certificado-download.php'], true)) {
+                if (isset($input['id'])) $tenantIds[] = $input['id'];
+            }
+        }
+        foreach ($tenantIds as $requestedTenantId) {
+            $tenant = (new \MiniErp\Repositories\PlatformTenantRepository($connection))->findById((int) $requestedTenantId);
+            if ($tenant && !\MiniErp\Authorization\PlatformDatabaseAccess::canView($identity, $tenant)) {
+                http_response_code(403);
+                exit('Acesso a esta empresa restrito ao SUPER_ADMIN.');
+            }
+        }
+
         $isDryRun = basename((string) ($_SERVER['SCRIPT_NAME'] ?? '')) === 'operacoes-multitenant.php'
             && ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST';
 
@@ -52,4 +69,3 @@ function requireAuthorizedPlatformContext(): array
         exit('Painel indisponível.');
     }
 }
-
